@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SISTEMA CENTRAL - CASA INTELIGENTE ESP32</title>
+    <style>
+        /* CSS GENERAL - ESTILO FUTURISTA CYBERPUNK */
+        :root {
+            --bg-principal: #0a0b10;
+            --bg-tarjeta: rgba(16, 18, 27, 0.85);
+            --borde-neon: #00f0ff;
+            --texto-brillo: #00ff66;
+            --alerta-neon: #ff0055;
+            --fuente-cyber: 'Courier New', Courier, monospace;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-principal);
+            background-image: 
+                radial-gradient(at 50% 0%, rgba(0, 240, 255, 0.15) 0px, transparent 50%),
+                radial-gradient(at 0% 100%, rgba(255, 0, 85, 0.1) 0px, transparent 40%);
+            color: #ffffff;
+            font-family: var(--fuente-cyber);
+            min-height: 100vh;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        /* CONTENEDOR PRINCIPAL */
+        .contenedor-central {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 25px;
+        }
+
+        /* ENCABEZADO CORE */
+        header {
+            background: var(--bg-tarjeta);
+            border: 2px solid var(--borde-neon);
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.3);
+            padding: 25px;
+            border-radius: 8px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        header::before {
+            content: "SISTEMA OPERATIVO ACTIVO v4.0.2";
+            position: absolute;
+            top: 5px;
+            left: 10px;
+            font-size: 10px;
+            color: var(--borde-neon);
+            opacity: 0.7;
+        }
+
+        h1 {
+            font-size: 2rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: #fff;
+            text-shadow: 0 0 10px var(--borde-neon), 0 0 20px var(--borde-neon);
+            margin-bottom: 10px;
+        }
+
+        .estado-conexion {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 8px 20px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+            font-size: 12px;
+        }
+
+        .indicador-led {
+            width: 12px;
+            height: 12px;
+            background-color: var(--alerta-neon);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--alerta-neon);
+            animation: parpadeo 1.5s infinite;
+        }
+
+        .indicador-led.conectado {
+            background-color: var(--texto-brillo);
+            box-shadow: 0 0 10px var(--texto-brillo);
+        }
+
+        /* ACCIÓN DE CONEXIÓN SERIAL */
+        .consola-conexion {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .btn-conectar {
+            background: transparent;
+            border: 2px solid var(--texto-brillo);
+            color: var(--texto-brillo);
+            font-family: var(--fuente-cyber);
+            font-weight: bold;
+            padding: 12px 30px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+            box-shadow: inset 0 0 5px rgba(0, 255, 102, 0.2);
+        }
+
+        .btn-conectar:hover {
+            background: var(--texto-brillo);
+            color: #000;
+            box-shadow: 0 0 15px var(--texto-brillo);
+        }
+
+        /* GRILLA DE RELÉS */
+        .panel-control {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+        }
+
+        .tarjeta-rele {
+            background: var(--bg-tarjeta);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+        }
+
+        .tarjeta-rele::after {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            border-radius: 6px;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0);
+            pointer-events: none;
+            transition: all 0.3s;
+        }
+
+        .tarjeta-rele.encendido {
+            border-color: var(--texto-brillo);
+            box-shadow: 0 0 15px rgba(0, 255, 102, 0.15);
+        }
+
+        .tarjeta-rele.encendido::after {
+            box-shadow: 0 0 15px rgba(0, 255, 102, 0.2);
+        }
+
+        .info-rele {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .nombre-rele {
+            font-size: 16px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            color: #fff;
+        }
+
+        .sub-pin {
+            font-size: 11px;
+            color: var(--borde-neon);
+            opacity: 0.8;
+            margin-top: 4px;
+            text-transform: uppercase;
+        }
+
+        /* BOTONES INTERACTIVOS */
+        .controles-rele {
+            display: flex;
+            width: 100%;
+            gap: 10px;
+        }
+
+        .btn-cyber {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: #fff;
+            padding: 10px 5px;
+            font-family: var(--fuente-cyber);
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+        }
+
+        .btn-on:hover {
+            background: rgba(0, 255, 102, 0.2);
+            border-color: var(--texto-brillo);
+            color: var(--texto-brillo);
+            box-shadow: 0 0 8px rgba(0, 255, 102, 0.3);
+        }
+
+        .btn-off:hover {
+            background: rgba(255, 0, 85, 0.2);
+            border-color: var(--alerta-neon);
+            color: var(--alerta-neon);
+            box-shadow: 0 0 8px rgba(255, 0, 85, 0.3);
+        }
+
+        .tarjeta-rele.encendido .btn-on {
+            background: var(--texto-brillo);
+            color: #000;
+            border-color: var(--texto-brillo);
+        }
+
+        .tarjeta-rele:not(.encendido) .btn-off {
+            background: var(--alerta-neon);
+            color: #fff;
+            border-color: var(--alerta-neon);
+        }
+
+        /* CONTROLES MAESTROS / MACROS */
+        .seccion-maestra {
+            background: var(--bg-tarjeta);
+            border: 1px dashed var(--borde-neon);
+            padding: 20px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .titulo-master {
+            font-size: 14px;
+            letter-spacing: 2px;
+            color: var(--borde-neon);
+            width: 100%;
+            text-align: center;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .btn-master {
+            background: transparent;
+            font-family: var(--fuente-cyber);
+            font-weight: bold;
+            font-size: 14px;
+            padding: 15px 40px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+            letter-spacing: 1px;
+        }
+
+        .btn-master-on {
+            border: 2px solid var(--borde-neon);
+            color: var(--borde-neon);
+            box-shadow: inset 0 0 10px rgba(0, 240, 255, 0.1);
+        }
+
+        .btn-master-on:hover {
+            background: var(--borde-neon);
+            color: #000;
+            box-shadow: 0 0 20px var(--borde-neon);
+        }
+
+        .btn-master-off {
+            border: 2px solid var(--alerta-neon);
+            color: var(--alerta-neon);
+            box-shadow: inset 0 0 10px rgba(255, 0, 85, 0.1);
+        }
+
+        .btn-master-off:hover {
+            background: var(--alerta-neon);
+            color: #fff;
+            box-shadow: 0 0 20px var(--alerta-neon);
+        }
+
+        /* CONSOLA DE REGISTROS / LOGGER TERMINAL */
+        .consola-terminal {
+            background: #05060b;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            padding: 15px;
+            font-size: 12px;
+        }
+
+        .cabecera-terminal {
+            display: flex;
+            justify-content: space-between;
+            color: rgba(255,255,255,0.4);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 8px;
+            margin-bottom: 10px;
+            font-size: 11px;
+        }
+
+        .logs-body {
+            max-height: 150px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .linea-log {
+            line-height: 1.5;
+            color: rgba(255, 255, 255, 0.85);
+        }
+
+        .linea-log span.tiempo {
+            color: var(--borde-neon);
+            margin-right: 8px;
+        }
+
+        .linea-log span.sistema {
+            color: var(--texto-brillo);
+        }
+
+        /* ANIMACIONES */
+        @keyframes parpadeo {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
+        }
+
+        /* SCROLLBAR PERSONALIZADO */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.3);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--borde-neon);
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="contenedor-central">
+        
+        <header>
+            <h1>CONTROL CENTRAL DOMÓTICO</h1>
+            <div class="consola-conexion">
+                <div class="estado-conexion">
+                    <div id="ledConexion" class="indicador-led"></div>
+                    <span id="textoConexion">ESTADO: HARDWARE DESCONECTADO</span>
+                </div>
+            </div>
+            <div class="consola-conexion" style="margin-top: 15px;">
+                <button id="btnConectarPuerto" class="btn-conectar">Enlazar Puerto COM (ESP32)</button>
+            </div>
+        </header>
+
+        <div class="seccion-maestra">
+            <div class="titulo-master">Macro-Comandos Globales Síncronos</div>
+            <button class="btn-master btn-master-on" onclick="enviarMacro('prender_todos')">Prender Todo</button>
+            <button class="btn-master btn-master-off" onclick="enviarMacro('apagar_todos')">Apagar Todo</button>
+        </div>
+
+        <main class="panel-control">
+            
+            <div class="tarjeta-rele" id="tarjeta_0">
+                <div class="info-rele">
+                    <div class="nombre-rele">MÓDULO RELÉ 0</div>
+                    <div class="sub-pin">GPIO PIN 26</div>
+                </div>
+                <div class="controles-rele">
+                    <button class="btn-cyber btn-on" onclick="controlarRele(0, 'prender')">ON</button>
+                    <button class="btn-cyber btn-off" onclick="controlarRele(0, 'apagar')">OFF</button>
+                </div>
+            </div>
+
+            <div class="tarjeta-rele" id="tarjeta_1">
+                <div class="info-rele">
+                    <div class="nombre-rele">MÓDULO RELÉ 1</div>
+                    <div class="sub-pin" style="color: #fff; text-shadow: 0 0 5px var(--borde-neon);">GPIO PIN 27 ★</div>
+                </div>
+                <div class="controles-rele">
+                    <button class="btn-cyber btn-on" onclick="controlarRele(1, 'prender')">ON</button>
+                    <button class="btn-cyber btn-off" onclick="controlarRele(1, 'apagar')">OFF</button>
+                </div>
+            </div>
+
+            <div class="tarjeta-rele" id="tarjeta_2">
+                <div class="info-rele">
+                    <div class="nombre-rele">MÓDULO RELÉ 2</div>
+                    <div class="sub-pin">GPIO PIN 25</div>
+                </div>
+                <div class="controles-rele">
+                    <button class="btn-cyber btn-on" onclick="controlarRele(2, 'prender')">ON</button>
+                    <button class="btn-cyber btn-off" onclick="controlarRele(2, 'apagar')">OFF</button>
+                </div>
+            </div>
+
+            <div class="tarjeta-rele" id="tarjeta_3">
+                <div class="info-rele">
+                    <div class="nombre-rele">MÓDULO RELÉ 3</div>
+                    <div class="sub-pin">GPIO PIN 33</div>
+                </div>
+                <div class="controles-rele">
+                    <button class="btn-cyber btn-on" onclick="controlarRele(3, 'prender')">ON</button>
+                    <button class="btn-cyber btn-off" onclick="controlarRele(3, 'apagar')">OFF</button>
+                </div>
+            </div>
+
+        </main>
+
+        <div class="consola-terminal">
+            <div class="cabecera-terminal">
+                <span>TERMINAL DE SALIDA DE DATOS (SERIAL LOGGER)</span>
+                <span>BAUD: 115200</span>
+            </div>
+            <div class="logs-body" id="logsTerminal">
+                <div class="linea-log"><span class="tiempo">[00:00:00]</span> <span class="sistema">[SISTEMA]</span> Núcleo de interfaz iniciado correctamente. Esperando enlace Web Serial...</div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let puertoSerial = null;
+        let flujoEscritura = null;
+
+        const btnConectar = document.getElementById('btnConectarPuerto');
+        const ledConexion = document.getElementById('ledConexion');
+        const textoConexion = document.getElementById('textoConexion');
+        const logsTerminal = document.getElementById('logsTerminal');
+
+        // FUNCIÓN PARA AGREGAR REGISTROS A LA TERMINAL VISUAL
+        function agregarLog(mensaje, emisor = "WEB") {
+            const ahora = new Date();
+            const tiempoStr = ahora.toTimeString().split(' ')[0];
+            const nuevaLinea = document.createElement('div');
+            nuevaLinea.className = 'linea-log';
+            
+            if (emisor === "SISTEMA") {
+                nuevaLinea.innerHTML = `<span class="tiempo">[${tiempoStr}]</span> <span class="sistema">[${emisor}]</span> ${mensaje}`;
+            } else {
+                nuevaLinea.innerHTML = `<span class="tiempo">[${tiempoStr}]</span> 📡 Enviado comando: <strong>${mensaje}</strong>`;
+            }
+            
+            logsTerminal.appendChild(nuevaLinea);
+            logsTerminal.scrollTop = logsTerminal.scrollHeight;
+        }
+
+        // CONTROL DE LA API SERIAL DEL NAVEGADOR
+        async function conectarPuertoSerial() {
+            if ('serial' in navigator) {
+                try {
+                    // Solicitar selección del puerto COM (ESP32)
+                    puertoSerial = await navigator.serial.requestPort();
+                    await puertoSerial.open({ baudRate: 115200 }); // Configurado a la par con el código ESP32
+                    
+                    const encoder = new TextEncoderStream();
+                    flujoEscritura = encoder.writable.getWriter();
+                    encoder.readable.pipeTo(puertoSerial.writable);
+
+                    // Cambiar estados visuales en línea
+                    ledConexion.classList.add('conectado');
+                    textoConexion.innerText = "ESTADO: ONLINE (ESP32 CONECTADO)";
+                    btnConectar.style.display = "none";
+                    agregarLog("Enlace serial establecido de forma segura a 115200 Baudios.", "SISTEMA");
+
+                } catch (error) {
+                    console.error(error);
+                    agregarLog("Fallo al abrir o reclamar el puerto de hardware.", "SISTEMA");
+                    alert("Error de enlace: Asegúrate de que el monitor serie del IDE de Arduino esté cerrado.");
+                }
+            } else {
+                alert("Tu navegador web actual no soporta Web Serial API. Usa Google Chrome, Opera o Microsoft Edge.");
+            }
+        }
+
+        // ENVIAR COMANDOS DIRECTOS POR EL PUERTO COM
+        async function enviarComandoESP32(textoComando) {
+            agregarLog(textoComando);
+            if (flujoEscritura) {
+                try {
+                    // Enviamos el comando sumando el salto de línea '\n' tal como lo lee el ESP32
+                    await flujoEscritura.write(textoComando + "\n");
+                } catch (error) {
+                    console.error(error);
+                    agregarLog("Fallo crítico en el bus de datos de salida.", "SISTEMA");
+                }
+            } else {
+                agregarLog("COMANDO RETENIDO: Hardware no enlazado.", "SISTEMA");
+            }
+        }
+
+        // ACCIÓN ASIGNADA A LOS BOTONES INDIVIDUALES
+        function controlarRele(numeroRele, accion) {
+            const comandoGenerado = `${accion}_rele_${numeroRele}`;
+            const elementoTarjeta = document.getElementById(`tarjeta_${numeroRele}`);
+            
+            // Envío por puerto físico
+            enviarComandoESP32(comandoGenerado);
+
+            // Mutar la interfaz gráfica al instante
+            if (accion === 'prender') {
+                elementoTarjeta.classList.add('encendido');
+            } else {
+                elementoTarjeta.classList.remove('encendido');
+            }
+        }
+
+        // ACCIÓN ASIGNADA A LOS COMANDOS TOTALES / GLOBALES
+        function enviarMacro(macro) {
+            enviarComandoESP32(macro);
+            
+            // Actualizar todas las tarjetas gráficas en conjunto
+            for (let i = 0; i < 4; i++) {
+                const tarjeta = document.getElementById(`tarjeta_${i}`);
+                if (macro === 'prender_todos') {
+                    tarjeta.classList.add('encendido');
+                } else {
+                    tarjeta.classList.remove('encendido');
+                }
+            }
+        }
+
+        // GESTOR DE EVENTOS DE INTERFAZ
+        btnConectar.addEventListener('click', conectarPuertoSerial);
+    </script>
+</body>
+</html>
